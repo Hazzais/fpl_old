@@ -86,8 +86,8 @@ class SaveData:
             os.makedirs(self.save_dir)
 
     def save_wrapper_to_disk(self, save_data):
-        for k, v in save_data:
-            self.save_to_disk(k, v)
+        for k, v in save_data.items():
+            self.save_to_disk(v, k)
 
     def save_to_disk(self, data, outname):
         outfile = os.path.join(self.save_dir, outname + '_GW' +

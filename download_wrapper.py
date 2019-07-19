@@ -31,7 +31,7 @@ datafile_main = retrieve_data(API_URLS_FULL['static'])
 datafile_fixtures = retrieve_data(API_URLS_FULL['fixtures'])
 
 # Complete player variable set
-datafile_players_deep = retrieve_player_details(LINK_BASE + "element-summary/",
+datafile_players_deep = retrieve_player_details(API_URLS_FULL['player'],
                                                 datafile_main['elements'],
                                                 verbose=True)
 
