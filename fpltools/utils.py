@@ -2,6 +2,8 @@ import os
 import pickle
 from datetime import datetime
 
+import pandas as pd
+
 # Links and implementation ideas from:
 # https://github.com/amosbastian/fpl/blob/master/fpl/constants.py and
 # https://github.com/janerikcarlsen/fpl-cli/blob/master/fplcli/urls.py and
@@ -57,27 +59,44 @@ def get_datetime_string():
     return round(datetime.now().timestamp())
 
 
-def get_current_gameweek(data):
-    for gw in data['events']:
-        if gw['is_current']:
-            current_gw = gw['id']
-            break
+def get_next_gameweek(data):
+    d = pd.DataFrame(data)
+    s = d.loc[d.is_next]
+    if len(s) == 0:
+        raise RuntimeError("Cannot determine gameweek. Season may have ended.")
+    elif len(s) > 1:
+        raise RuntimeError("More than one gameweek is marked.")
     else:
-        for gw in data['events']:
-            if gw['is_next']:
-                current_gw = gw['id']
-                break
-        else:
-            raise RuntimeError(
-                "Cannot determine gameweek. Season may have ended.")
-    return current_gw
+        return int(s.id.values)
+
+
+def get_current_gameweek(data):
+    d = pd.DataFrame(data)
+    s = d.loc[d.is_current]
+    if len(s) == 0:
+        raise RuntimeError("Cannot determine gameweek. Season may not yet have"
+                           " begun.")
+    elif len(s) > 1:
+        raise RuntimeError("More than one gameweek is marked.")
+    return int(s.id.values)
+
+
+def get_previous_gameweek(data):
+    d = pd.DataFrame(data)
+    s = d.loc[d.is_previous]
+    if len(s) == 0:
+        raise RuntimeError("Cannot determine gameweek. Season may not yet have"
+                           " begun.")
+    elif len(s) > 1:
+        raise RuntimeError("More than one gameweek is marked.")
+    return int(s.id.values)
 
 
 class SaveData:
 
     def __init__(self, data, seasonid=None, save_base='data'):
         self.timestamp = get_datetime_string()
-        self.gameweek = get_current_gameweek(data)
+        self.gameweek = get_next_gameweek(data)
         self.seasonid = seasonid
         self.save_base = save_base
         self.save_dir = os.path.join(self.save_base, self.seasonid,
