@@ -62,8 +62,12 @@ def raw_data_load(in_dir,
 #       so bear this in mind.
 class PlayerDataFrame():
 
-    def __init__(self, data):
-        pass
+    def __init__(self, data, gameweek_start=1, gameweek_end='latest',
+                 prev_matches_consider=3):
+        self.data = data
+        self.gameweek_start = gameweek_start
+        self.gameweek_end = gameweek_end
+        self.prev_matches_consider = prev_matches_consider
 
     def __repr__(self):
         pass
