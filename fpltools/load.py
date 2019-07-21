@@ -481,62 +481,103 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
     return team_fixtures_results
 
 
-def next_gameweek_rows(data):
-    # =team_fixtures_results
-    # Get first row for team and gameweek only. This is done due to double
-    # gameweeks which otherwise mess things up. For now, we just want to
-    # predict the next game (rather than next gameweek)
-    data2 = data.sort_values(['team_id', 'gameweek', 'kickoff_time'])
-    team_fixtures_results_single = data2.groupby(
-        ['team_id', 'gameweek']).head(1).drop(
-        columns=['team_scored', 'team_conceded'])
-    return team_fixtures_results_single
+def add_remaining_gameweeks(data, data_summary, data_fixtures):
+    players = data.copy()
+    players_summary = data_summary.copy()
+    fixtures = data_fixtures.copy()
 
+    # Columns from future player fixtures to add
+    keep_cols = ['player_id',
+                 'gameweek',
+                 'fixture_id',
+                 'is_home',
+                 'kickoff_time',
+                 'kickoff_time_formatted',
+                 'team_a',
+                 'team_h']
 
-def add_predict_player_row(data, team_rows, total_players):
-    # Add extra row per player. This will be added to the bottom of each to
-    # represent the next game (which we are predicting for)
-    player_full_set = data.copy()
-    keep_cols = ['player_id', 'team_id', 'gameweek']
-    final_player_row = player_full_set.groupby('player_id').tail(1)[keep_cols]
-    final_player_row['gameweek'] = final_player_row['gameweek']+1
-    # Add to the final player row the team's next fixture details (not in
-    # original data for this row as we have created it).
-    final_player_row =\
-        final_player_row.merge(team_rows[['team_id',
-                                          'gameweek',
-                                          'fixture_id']],
-                               how='left',
-                               on=['team_id', 'gameweek'])
-    # Add to the new rows the estimated percentage ownership, absolute
+    # Combine previous gameweeks and unplayed ones. There are some columns
+    # which will not be in the future gameweeks which can be determined from
+    # other columns. For example, determine the players teams and opponents
+    # from the row matches' home and away teams and the home/away flag.
+    players = pd.concat((players, player_future[keep_cols]), sort=False)
+    players.loc[(players.team_id.isna()) & (players.is_home), 'team_id'] =\
+        players.loc[(players.team_id.isna()) & (players.is_home), 'team_h']
+    players.loc[(players.team_id.isna()) &
+                (players.is_home == False), 'team_id'] =\
+        players.loc[(players.team_id.isna()) & (players.is_home == False),
+                    'team_a']
+    players.loc[(players.opponent_team.isna()) &
+                (players.is_home), 'opponent_team'] =\
+        players.loc[(players.opponent_team.isna()) &
+                    (players.is_home), 'team_a']
+    players.loc[(players.opponent_team.isna()) &
+                (players.is_home == False), 'opponent_team'] =\
+        players.loc[(players.opponent_team.isna()) &
+                    (players.is_home == False), 'team_h']
+    players.loc[(players.team_id.isna()), 'was_home'] =\
+        players.loc[(players.team_id.isna()) & (players.is_home), 'is_home']
+
+    # Add a flag to highlight whether a gameweek has started and finished yet
+    players = players.merge(fixtures[['fixture_id', 'started', 'finished']],
+                            on='fixture_id')
+
+    # Need to sort to get order of games for each player. Use the kickoff date
+    # time as a third sort variable to account for double gameweeks.
+    players['dtime'] = pd.to_datetime(players['kickoff_time'], errors='coerce')
+    players.sort_values(['player_id', 'gameweek', 'dtime', 'fixture_id'],
+                        inplace=True)
+
+    # A row for the next game (max one per gameweek per player) per player and
+    # add a flag to indicate this for later combination with main dataset.
+    next_game_per_player = players.loc[~players.started,
+                    ['player_id', 'gameweek', 'fixture_id']]\
+        .groupby(['player_id', 'gameweek', 'fixture_id']).head(1)
+    next_game_per_player['next_game'] = True
+
+    # Add to the next game rows the estimated percentage ownership, absolute
     # ownership, and transfer stats
-    add_latest = player_summary[['player_id',
-                                 'now_cost',
-                                 'selected_by_percent',
-                                 'chance_of_playing_this_round',
-                                 'chance_of_playing_next_round',
-                                 'status',
-                                 'news',
-                                 'transfers_in',
-                                 'transfers_out']].copy()
+    add_latest = players_summary[['player_id',
+                                  'now_cost',
+                                  'selected_by_percent',
+                                  'chance_of_playing_this_round',
+                                  'chance_of_playing_next_round',
+                                  'status',
+                                  'news',
+                                  'transfers_in',
+                                  'transfers_out']].copy()
 
     # Calculate number selecting from total players and mean
-    tmp = add_latest['selected_by_percent'].astype(float)/100
-    add_latest.loc[:, 'selected'] = np.round(total_players*tmp).astype(int)
+    selected_as_pct = add_latest['selected_by_percent'].astype(float) / 100
+    add_latest.loc[:, 'selected'] = np.round(total_players * selected_as_pct)\
+        .astype(int)
     add_latest.rename(columns={'now_cost': 'value'}, inplace=True)
-    add_latest['transfers_balance'] =\
+    add_latest['transfers_balance'] = \
         add_latest['transfers_in'] - add_latest['transfers_out']
     add_latest.drop(columns=['selected_by_percent'], inplace=True)
-    final_player_row = final_player_row.merge(add_latest,
-                                              how='left',
-                                              on='player_id')
-    # Add the new player rows and sort so these are at the end for each player
-    player_full_set = pd.concat([player_full_set,
-                                 final_player_row], sort=False)
-    player_full_set.sort_values(['player_id', 'gameweek', 'fixture_id'],
-                                inplace=True)
 
-    return player_full_set
+    # Add stats to next game row here
+    next_game_per_player = next_game_per_player.merge(add_latest,
+                                                      how='left',
+                                                      on='player_id')
+
+    # Finally, merge on these new stats. As these might already exist in the
+    # previous gameweeks data, need to take the first non-missing.
+    # TODO: make this approach better.
+    players = players.merge(next_game_per_player, how='left',
+                             on=['player_id', 'gameweek', 'fixture_id'])
+    players['next_game'].fillna(False, inplace=True)
+    players['selected'] = players.selected_x.combine_first(players.selected_y)
+    players['value'] = players.value_x.combine_first(players.value_y)
+    players['transfers_balance'] =\
+        players.transfers_balance_x.combine_first(players.transfers_balance_y)
+    players['transfers_in'] =\
+        players.transfers_in_x.combine_first(players.transfers_in_y)
+    players['transfers_out'] =\
+        players.transfers_out_x.combine_first(players.transfers_out_y)
+    drop_cols = [col for col in players.columns if col.endswith(('_x', '_y'))]
+    players.drop(columns=drop_cols + ['dtime', 'is_home'], inplace=True)
+    return players
 
 
 def add_lagged_columns(data):
@@ -904,9 +945,9 @@ player_history, player_future = get_players_deep(data_players)
 player_history2 = add_fixture_team(player_history, all_fixtures)
 team_fixtures_results = team_detailed_data(all_fixtures, player_history2,
                                            prev_matches_consider=3)
-player_next_row = next_gameweek_rows(team_fixtures_results)
-player_history3 = add_predict_player_row(player_history2, player_next_row,
-                                         total_players)  # TODO: this!
+player_history3 = add_remaining_gameweeks(player_history2, player_summary,
+                                           all_fixtures)
+
 player_history4 = add_lagged_columns(player_history3)
 player_history5 = add_team_details(player_history4, team_fixtures_results)
 player_history6 = add_player_reference_data(player_history5, player_summary,
