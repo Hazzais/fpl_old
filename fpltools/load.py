@@ -2,7 +2,6 @@ import os
 import pickle
 import pandas as pd
 import numpy as np
-import sqlite3
 from copy import deepcopy
 import re
 from fpltools.utils import get_current_gameweek, get_next_gameweek,\
@@ -60,34 +59,9 @@ def raw_data_load(in_dir,
     return data_raw
 
 
-data_main = raw_data_load('data',
-                              'data_main',
-                          's201819',
-                          37)
-
-data_players = raw_data_load('data',
-                              'data_players_deep',
-                          's201819',
-                          37)
-
-data_fixtures = raw_data_load('data',
-                              'data_fixtures',
-                          's201819',
-                          37)
-
-a_data_main = raw_data_load('data',
-                              'data_main')
-
-a_data_players = raw_data_load('data',
-                              'data_players_deep')
-
-a_data_fixtures = raw_data_load('data',
-                              'data_fixtures')
-
-
 def replace_nonetype_in_dict(thedict):
     # Replace values which are lists or NoneTypes with numpy nans
-    return {k: (np.nan if v == None or isinstance(v, (list,)) else v)
+    return {k: (np.nan if v is None or isinstance(v, (list,)) else v)
             for k, v in thedict.items()}
 
 
@@ -109,7 +83,6 @@ def get_events(data):
                   'deadline_time_formatted',
                   'deadline_time_game_offset',
                   ]
-
 
     # Convert dict to DataFrame
     events = pd.DataFrame(columns=cols_order)
@@ -179,13 +152,15 @@ def cols_to_front(data, cols):
     extra_columns = [col for col in data.columns if col not in cols]
     return data[cols + extra_columns]
 
+
 def get_gameweek_fixtures(data, gameweek: int):
-    outlist = [x for x in data_fixtures if x['event'] == gameweek]
+    outlist = [x for x in data if x['event'] == gameweek]
     outdf = pd.DataFrame(outlist)
     outdf['kickoff_datetime'] = pd.to_datetime(outdf['kickoff_time'],
                                                errors='coerce')
     outdf['min_date'] = outdf['kickoff_datetime'].min()
-    outdf['event_day'] = (outdf['kickoff_datetime'].dt.date - outdf['min_date'].dt.date).dt.days + 1
+    outdf['event_day'] = (outdf['kickoff_datetime'].dt.date
+                          - outdf['min_date'].dt.date).dt.days + 1
     outdf['fixture_id_long'] = outdf['code'].astype(str)
     outdf['fixture_id'] = outdf['id'].astype(str)
     outdf['team_h'] = outdf['team_h'].astype(str)
@@ -199,27 +174,27 @@ def get_teams(data):
     # Get teams
 
     cols_order = ['id',
-                     'short_name',
-                     'name',
-                     'strength',
-                     'code',
-                     'strength_overall_home',
-                     'strength_overall_away',
-                     'strength_attack_home',
-                     'strength_attack_away',
-                     'strength_defence_away',
-                     'strength_defence_home',
-                     'points',
-                     'draw',
-                     'loss',
-                     'win',
-                     'form',
-                     'position',
-                     'played',
-                     'team_division',
-                     'unavailable',
-                     'link_url',
-                     ]
+                  'short_name',
+                  'name',
+                  'strength',
+                  'code',
+                  'strength_overall_home',
+                  'strength_overall_away',
+                  'strength_attack_home',
+                  'strength_attack_away',
+                  'strength_defence_away',
+                  'strength_defence_home',
+                  'points',
+                  'draw',
+                  'loss',
+                  'win',
+                  'form',
+                  'position',
+                  'played',
+                  'team_division',
+                  'unavailable',
+                  'link_url'
+                  ]
 
     # This complicated loop is needed to convert the dict to a DataFrame due to
     # the different types of values in it.
@@ -238,24 +213,24 @@ def get_teams(data):
             # Get data for coming fixture from list containing dict. If two
             # elements (double gameweek), take only the first (scope of this
             # project )
-            if k=='current_event_fixture' and v:
+            if k == 'current_event_fixture' and v:
                 v_curr = {'curr_game_' + x: y for (x, y) in pl[k][0].items()}
                 for k2, v2 in v_curr.items():
                     teams.loc[team_id, k2] = v2
             # If no current fixture (team has no game this gameweek), ignore
-            elif k=='current_event_fixture':
+            elif k == 'current_event_fixture':
                 pass
             # Get data for next fixture from list containing dict. If two
             # elements (double gameweek), take only the first (scope of this
             # project )
-            elif k=='next_event_fixture' and v:
+            elif k == 'next_event_fixture' and v:
                 v_next = {'next_game_' + x: y for (x, y) in pl[k][0].items()}
                 for k2, v2 in v_next.items():
                     teams.loc[team_id, k2] = v2
             # If no next fixture (team has no game this gameweek), ignore
-            elif k=='next_event_fixture':
+            elif k == 'next_event_fixture':
                 pass
-            elif v==None:
+            elif v is None:
                 v = np.nan
                 teams.loc[team_id, k] = v
             else:
@@ -299,13 +274,11 @@ def get_players_deep(data):
     player_history.rename(columns={'element': 'player_id',
                                    'round': 'gameweek',
                                    'fixture': 'fixture_id',
-                                   'id': 'playergw_id'
-                                        },
+                                   'id': 'playergw_id'},
                           inplace=True)
     player_future.rename(columns={'id': 'fixture_id',
                                   'code': 'fixture_id_long',
-                                  'event': 'gameweek'
-                                        },
+                                  'event': 'gameweek'},
                          inplace=True)
 
     player_history['playergw_id'] = player_history['playergw_id'].astype(int)
@@ -326,16 +299,37 @@ def get_players_deep(data):
                                   ['player_id', 'gameweek', 'fixture_id_long',
                                    'fixture_id'])
 
-
     return player_history, player_future
 
 
-events = get_events(data_main['events'])
-next_gameweek = get_next_gameweek(data_main['events'])
-current_gameweek = get_current_gameweek(data_main['events'])
-previous_gameweek = get_previous_gameweek(data_main['events'])
+def get_fixtures(data):
+    # Get all fixtures data
+    fixtures = pd.DataFrame()
 
-next_fixtures = get_gameweek_fixtures(data_fixtures, next_gameweek)
+    # Make dict into DataFrame - stats can cause problems and is done
+    # separately
+    for vdict in data:
+        vdict_nostats = deepcopy(vdict)
+        del vdict_nostats['stats']
+
+        game_id = vdict['code']
+        df_row = pd.DataFrame(vdict_nostats, index=[game_id])
+
+        fixtures = fixtures.append(df_row)
+
+    fixtures.rename(columns={'code': 'fixture_id_long',
+                             'id': 'fixture_id',
+                             'event': 'gameweek'}, inplace=True)
+
+    fixtures['team_h'] = fixtures['team_h'].astype(str)
+    fixtures['team_a'] = fixtures['team_a'].astype(str)
+    fixtures['fixture_id_long'] = fixtures['fixture_id_long'].astype(str)
+    fixtures['fixture_id'] = fixtures['fixture_id'].astype(str)
+    fixtures['gameweek'] = fixtures['gameweek'].astype(str)
+
+    return cols_to_front(fixtures, ['fixture_id', 'fixture_id_long',
+                                    'gameweek'])
+
 
 def get_positions(data):
     positions = pd.DataFrame(data['element_types'])
@@ -343,18 +337,732 @@ def get_positions(data):
     positions.drop(columns=['id'], inplace=True)
     return cols_to_front(positions, ['position_id'])
 
+
+def add_fixture_team(data, fixtures):
+    # Add team. For merging some casting of keys to integers is needed due to
+    # the way values are being stored. Merge based on the fixture and whether
+    # the player played home or away that fixture.
+    data_out = data.copy()
+    # data_out['fixture_id'] = data_out['fixture_id'].astype(int)
+    data_out = data_out.merge(fixtures[['fixture_id', 'team_a', 'team_h']],
+                              how='left', on='fixture_id')
+    temp_team_id = np.where(data_out['was_home'],
+                            data_out['team_h'],
+                            data_out['team_a'])
+    # Add team based upon the fixture and home/away
+    data_out.insert(1, 'team_id', temp_team_id)
+    return data_out
+
+
+def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
+                       gameweek_upper=None):
+
+    # Make a new dataframe containing one row per team per game showing stats
+    fixt_cols = ['gameweek',
+                 'fixture_id',
+                 'team_h',
+                 'team_h_difficulty',
+                 'team_h_score',
+                 'team_a',
+                 'team_a_difficulty',
+                 'team_a_score',
+                 'kickoff_time',
+                 'event_day']
+
+    # Subset to gameweeks to use
+    # use_fixtures = fixtures.loc[
+    #     (fixtures['gameweek'] >= gameweek_start_true)
+    #     & (fixtures['gameweek'] <= gameweek_end + 1)]
+    if gameweek_upper is not None:
+        use_fixtures = fixtures.loc[(fixtures['gameweek'] <=
+                                     gameweek_upper + 1)]
+    else:
+        use_fixtures = fixtures.copy()
+
+    # Need to concatenate home and away data to get both teams
+    team_fixtures_results_home = use_fixtures[fixt_cols].rename(
+        columns={'team_h': 'team_id',
+                 'team_a': 'opponent_team',
+                 'team_h_difficulty': 'team_difficulty',
+                 'team_a_difficulty': 'opponent_difficulty',
+                 'team_h_score': 'team_scored',
+                 'team_a_score': 'team_conceded'})
+    team_fixtures_results_home['is_home'] = True
+    team_fixtures_results_away = use_fixtures[fixt_cols].rename(
+        columns={'team_a': 'team_id',
+                 'team_h': 'opponent_team',
+                 'team_a_difficulty': 'team_difficulty',
+                 'team_h_difficulty': 'opponent_difficulty',
+                 'team_a_score': 'team_scored',
+                 'team_h_score': 'team_conceded'})
+    team_fixtures_results_away['is_home'] = False
+
+    team_fixtures_results = pd.concat(
+        [team_fixtures_results_home, team_fixtures_results_away], sort=False)
+    team_fixtures_results.sort_values(['team_id', 'gameweek', 'kickoff_time'],
+                                      inplace=True)
+
+    # originally single row was here ####
+
+    # Add additional stats including goals, results, points, and number of
+    # players and scorers.
+    tsc = ['team_scored', 'team_conceded']
+    ts = 'team_scored'
+    tc = 'team_conceded'
+    team_fixtures_results[tsc] = team_fixtures_results[tsc].astype(float)
+    team_fixtures_results['team_win'] =\
+        team_fixtures_results[ts] > team_fixtures_results[tc]
+    team_fixtures_results['team_draw'] =\
+        team_fixtures_results[ts] == team_fixtures_results[tc]
+    team_fixtures_results['team_loss'] =\
+        team_fixtures_results[ts] < team_fixtures_results[tc]
+    team_fixtures_results['points'] = np.where(
+        ~team_fixtures_results[tc].isna(),
+        3 * team_fixtures_results['team_win'] + team_fixtures_results[
+            'team_draw'],
+        np.nan)
+
+    # Determine number of players playing and scoring
+    unique_scorers = player_full_set.loc[
+        player_full_set.goals_scored >= 1, ['team_id', 'player_id',
+                                            'gameweek']]
+    n_scorers = unique_scorers.groupby(
+        ['team_id', 'gameweek']).size().reset_index().rename(
+        columns={0: 'unique_scorers'})
+    n_scorers['gameweek'] = n_scorers['gameweek'].astype(str)
+    unique_players = player_full_set.loc[
+        player_full_set.minutes > 0, ['team_id', 'player_id', 'gameweek',
+                                      'total_points']]
+    unique_players['total_points'] = unique_players['total_points'].astype(int)
+
+    # Get number and mean points per team per game
+    total_scores = unique_players.groupby(['team_id', 'gameweek'])[
+        'total_points'].agg(
+        ['mean', 'sum']).reset_index().rename(
+        columns={'mean': 'team_mean_points', 'sum': 'team_total_points'})
+    total_scores['gameweek'] = total_scores['gameweek'].astype(str)
+
+    # Add the above to the results dataframe
+    team_fixtures_results = team_fixtures_results.merge(total_scores,
+                                                        how='left',
+                                                        on=['team_id',
+                                                            'gameweek'])
+    team_fixtures_results = team_fixtures_results.merge(n_scorers, how='left',
+                                                        on=['team_id',
+                                                            'gameweek'])
+    team_fixtures_results.loc[~team_fixtures_results['team_scored'].isna(),
+                              'unique_scorers'] = \
+        team_fixtures_results.loc[~team_fixtures_results[
+            'team_scored'].isna(), 'unique_scorers'].fillna(0)
+
+    team_fixtures_results['gameweek_int'] = team_fixtures_results['gameweek']\
+        .astype(int)
+    team_fixtures_results['dtime'] = pd.to_datetime(
+        team_fixtures_results['kickoff_time'], errors='coerce')
+    team_fixtures_results.sort_values(['team_id', 'gameweek_int', 'dtime'],
+                                      inplace=True)
+
+    # Determine the average stats value across the last several games for each
+    # team
+    roll_cols = ['roll_team_scored',
+                 'roll_team_conceded',
+                 'roll_team_points',
+                 'roll_unique_scorers',
+                 'roll_mean_points',
+                 'roll_total_points']
+    team_fixtures_results[roll_cols] = team_fixtures_results. \
+        groupby('team_id')[
+        'team_scored', 'team_conceded', 'points', 'unique_scorers',
+        'team_mean_points', 'team_total_points'].apply(
+        lambda x: x.rolling(center=False, window=prev_matches_consider).mean())
+
+    # originally stats df was here ####
+
+    return team_fixtures_results
+
+
+def next_gameweek_rows(data):
+    # =team_fixtures_results
+    # Get first row for team and gameweek only. This is done due to double
+    # gameweeks which otherwise mess things up. For now, we just want to
+    # predict the next game (rather than next gameweek)
+    data2 = data.sort_values(['team_id', 'gameweek', 'kickoff_time'])
+    team_fixtures_results_single = data2.groupby(
+        ['team_id', 'gameweek']).head(1).drop(
+        columns=['team_scored', 'team_conceded'])
+    return team_fixtures_results_single
+
+
+def add_predict_player_row(data, team_rows, total_players):
+    # Add extra row per player. This will be added to the bottom of each to
+    # represent the next game (which we are predicting for)
+    player_full_set = data.copy()
+    keep_cols = ['player_id', 'team_id', 'gameweek']
+    final_player_row = player_full_set.groupby('player_id').tail(1)[keep_cols]
+    final_player_row['gameweek'] = final_player_row['gameweek']+1
+    # Add to the final player row the team's next fixture details (not in
+    # original data for this row as we have created it).
+    final_player_row =\
+        final_player_row.merge(team_rows[['team_id',
+                                          'gameweek',
+                                          'fixture_id']],
+                               how='left',
+                               on=['team_id', 'gameweek'])
+    # Add to the new rows the estimated percentage ownership, absolute
+    # ownership, and transfer stats
+    add_latest = player_summary[['player_id',
+                                 'now_cost',
+                                 'selected_by_percent',
+                                 'chance_of_playing_this_round',
+                                 'chance_of_playing_next_round',
+                                 'status',
+                                 'news',
+                                 'transfers_in',
+                                 'transfers_out']].copy()
+
+    # Calculate number selecting from total players and mean
+    tmp = add_latest['selected_by_percent'].astype(float)/100
+    add_latest.loc[:, 'selected'] = np.round(total_players*tmp).astype(int)
+    add_latest.rename(columns={'now_cost': 'value'}, inplace=True)
+    add_latest['transfers_balance'] =\
+        add_latest['transfers_in'] - add_latest['transfers_out']
+    add_latest.drop(columns=['selected_by_percent'], inplace=True)
+    final_player_row = final_player_row.merge(add_latest,
+                                              how='left',
+                                              on='player_id')
+    # Add the new player rows and sort so these are at the end for each player
+    player_full_set = pd.concat([player_full_set,
+                                 final_player_row], sort=False)
+    player_full_set.sort_values(['player_id', 'gameweek', 'fixture_id'],
+                                inplace=True)
+
+    return player_full_set
+
+
+def add_lagged_columns(data):
+    player_full_set = data.copy()
+    # Columns in which we need to lag the values (i.e. bring to player's next
+    # row). I.e. these features for a game should be those from the previous
+    # game
+    lag_cols = ['total_points',
+                'minutes',
+                'goals_scored',
+                'bonus',
+                'opponent_team',
+                'assists',
+                'attempted_passes',
+                'big_chances_created',
+                'big_chances_missed',
+                'bps',
+                'clean_sheets',
+                'clearances_blocks_interceptions',
+                'completed_passes',
+                'creativity',
+                'dribbles',
+                'ea_index',
+                'errors_leading_to_goal',
+                'errors_leading_to_goal_attempt',
+                'fouls',
+                'goals_conceded',
+                'ict_index',
+                'playergw_id',
+                'influence',
+                'key_passes',
+                'kickoff_time',
+                'kickoff_time_formatted',
+                'offside',
+                'open_play_crosses',
+                'own_goals',
+                'penalties_conceded',
+                'penalties_missed',
+                'penalties_saved',
+                'recoveries',
+                'red_cards',
+                'saves',
+                'tackled',
+                'tackles',
+                'target_missed',
+                'team_a_score',
+                'team_h_score',
+                'threat',
+                'was_home',
+                'winning_goals',
+                'yellow_cards'
+                ]
+
+    # Columns we may potentially predict. Add prefix to mark them.
+    target_cols = ['total_points',
+                   'goals_scored',
+                   'goals_conceded',
+                   'minutes']
+    target_cols_rename = {col: 'target_' + str(col) for col in target_cols}
+
+    # Get rid of columns. All those columns to delete include the original
+    # names we are lagging
+    del_cols = [col for col in lag_cols if col not in target_cols] +\
+               ['loaned_in', 'loaned_out', 'team_a', 'team_h']
+
+    # Add prefix to mark lagged columns as values from the previous gameweek
+    lagged_cols = ['prev_' + str(col) for col in lag_cols]
+
+    # Perform the lag, drop the original columns, and rename the targets
+    player_full_set[lagged_cols] =\
+        player_full_set.groupby('player_id')[lag_cols].shift(1)
+    player_full_set.drop(columns=del_cols, inplace=True)
+    player_full_set.rename(columns=target_cols_rename, inplace=True)
+    return player_full_set
+
+
+def add_team_details(data, team_fixtures_results):
+    player_full_set = data.copy()
+    # Add team details to the player dataset
+    tfr_cols = ['fixture_id',
+                'team_id',
+                'team_difficulty',
+                'opponent_team',
+                'opponent_difficulty',
+                'kickoff_time',
+                'event_day',
+                'is_home']
+
+    player_full_set = player_full_set.merge(team_fixtures_results[tfr_cols],
+                                            how='left',
+                                            on=['team_id', 'fixture_id'])
+
+    player_full_set['prev_team_score'] =\
+        np.where(player_full_set.prev_was_home,
+                 player_full_set.prev_team_h_score,
+                 player_full_set.prev_team_a_score)
+    player_full_set['prev_opponent_score'] =\
+        np.where(player_full_set.prev_was_home is False,
+                 player_full_set.prev_team_h_score,
+                 player_full_set.prev_team_a_score)
+    player_full_set['prev_win'] =\
+        player_full_set.prev_team_score > player_full_set.prev_opponent_score
+    player_full_set['prev_draw'] =\
+        player_full_set.prev_team_score == player_full_set.prev_opponent_score
+    player_full_set['prev_loss'] =\
+        player_full_set.prev_team_score < player_full_set.prev_opponent_score
+
+    player_full_set.drop(columns=['prev_was_home',
+                                  'prev_team_a_score',
+                                  'prev_team_h_score'], inplace=True)
+    return player_full_set
+
+
+def add_player_reference_data(data, player_summary, positions):
+    player_full_set = data.copy()
+    positions_copy = positions[['position_id', 'singular_name_short']].copy()
+    positions_copy.rename(columns={'singular_name_short': ' position'},
+                          inplace=True)
+    # Add player summary columns, including reference info like names as well
+    # as position. This is constant data throughout the season
+    cols_player_details = ['player_id',
+                           'position_id',
+                           'first_name',
+                           'second_name',
+                           ]
+
+    player_full_set =\
+        player_full_set.merge(player_summary[cols_player_details],
+                              how='left',
+                              on='player_id')
+    # Add position
+    # Something strange is happening when merging the keys when they are a
+    # string (not even categoricals) so temporarily convert to ints
+    player_full_set['position_id'] = player_full_set['position_id'].astype(int)
+    positions_copy['position_id'] = positions_copy['position_id'].astype(int)
+    player_full_set =\
+        player_full_set.merge(positions_copy,
+                              how='left',
+                              on='position_id').drop(columns=['position_id'])
+    return player_full_set
+
+
+def add_team_reference_data(data, data_teams):
+    player_full_set = data.copy()
+    teams = data_teams.copy()
+    # Add team reference data and strength
+    cols_teams = ['team_id',
+                  'short_name',
+                  'name',
+                  'strength',
+                  ] + [col for col in teams if col.startswith('strength_')]
+    rn_dict = {'short_name': 'team_short',
+               'name': 'team_name',
+               'strength': 'team_strength'}
+    player_full_set =\
+        player_full_set.merge(teams[cols_teams].rename(columns=rn_dict),
+                              how='left',
+                              on='team_id')
+
+    # Split up team strength between home and away for each player's home and
+    # away fixtures
+    player_full_set['team_strength_ha_overall'] =\
+        np.where(player_full_set.is_home,
+                 player_full_set['strength_overall_home'],
+                 player_full_set['strength_overall_away'])
+    player_full_set['team_strength_ha_attack'] =\
+        np.where(player_full_set.is_home,
+                 player_full_set['strength_attack_home'],
+                 player_full_set['strength_attack_away'])
+    player_full_set['team_strength_ha_defence'] =\
+        np.where(player_full_set.is_home,
+                 player_full_set['strength_defence_home'],
+                 player_full_set['strength_defence_away'])
+    player_full_set.drop(columns=[col for col in player_full_set
+                                  if col.startswith('strength_')],
+                         inplace=True)
+
+    # Do the above but for the opponent
+    rn_dict_opp = {'short_name': 'opponent_team_short',
+                   'name': 'opponent_team_name',
+                   'strength': 'opponent_team_strength',
+                   'team_id': 'opponent_team'}
+    player_full_set =\
+        player_full_set.merge(teams[cols_teams].rename(columns=rn_dict_opp),
+                              how='left',
+                              on='opponent_team')
+    player_full_set['opponent_strength_ha_overall'] =\
+        np.where(player_full_set.is_home,
+                 player_full_set['strength_overall_home'],
+                 player_full_set['strength_overall_away'])
+    player_full_set['opponent_strength_ha_attack'] =\
+        np.where(player_full_set.is_home,
+                 player_full_set['strength_attack_home'],
+                 player_full_set['strength_attack_away'])
+    player_full_set['opponent_strength_ha_defence'] =\
+        np.where(player_full_set.is_home,
+                 player_full_set['strength_defence_home'],
+                 player_full_set['strength_defence_away'])
+    player_full_set.drop(columns=[col for col in player_full_set
+                                  if col.startswith('strength_')],
+                         inplace=True)
+    return player_full_set
+
+
+def add_time_features(data):
+    player_full_set = data.copy()
+    # Make features from kickoff times - first convert text to datetime
+    player_full_set['kickoff_datetime'] =\
+        pd.to_datetime(player_full_set['kickoff_time'], errors='coerce')
+    player_full_set['prev_kickoff_datetime'] =\
+        pd.to_datetime(player_full_set['prev_kickoff_time'], errors='coerce')
+
+    # Function to bin hours
+    def hour_to_bin(h):
+        # TODO: there should be a better way to do this
+        if h < 12:
+            r = 'morning'
+        elif h < 15:
+            r = 'midday'
+        elif h < 19:
+            r = 'afternoon'
+        else:
+            r = 'evening'
+        return r
+
+    # Determine the hour, bin, and weekday of this and the previous game
+    player_full_set['kickoff_hour'] =\
+        player_full_set['kickoff_datetime'].dt.hour
+    player_full_set['kickoff_hour_bin'] =\
+        player_full_set['kickoff_hour'].apply(hour_to_bin)
+    player_full_set['kickoff_weekday'] =\
+        player_full_set['kickoff_datetime'].dt.weekday
+    player_full_set['prev_kickoff_hour'] =\
+        player_full_set['prev_kickoff_datetime'].dt.hour
+    player_full_set['prev_kickoff_hour_bin'] =\
+        player_full_set['prev_kickoff_hour'].apply(hour_to_bin)
+    player_full_set['prev_kickoff_weekday'] =\
+        player_full_set['prev_kickoff_datetime'].dt.weekday
+
+    # Convert features into cyclic ones (hours)
+    h_const = 2 * np.pi / 24
+    player_full_set['kickoff_hour_cos'] =\
+        np.cos(h_const * player_full_set['kickoff_hour'].astype(float))
+    player_full_set['kickoff_hour_sin'] =\
+        np.sin(h_const * player_full_set['kickoff_hour'].astype(float))
+    player_full_set['prev_kickoff_hour_cos'] =\
+        np.cos(h_const * player_full_set['prev_kickoff_hour'].astype(float))
+    player_full_set['prev_kickoff_hour_sin'] =\
+        np.sin(h_const * player_full_set['prev_kickoff_hour'].astype(float))
+
+    # Convert features into cyclic ones (weekdays)
+    w_const = 2 * np.pi / 7
+    player_full_set['kickoff_weekday_cos'] =\
+        np.cos(w_const * player_full_set['kickoff_weekday'].astype(float))
+    player_full_set['kickoff_weekday_sin'] =\
+        np.sin(w_const * player_full_set['kickoff_weekday'].astype(float))
+    player_full_set['prev_kickoff_weekday_cos'] =\
+        np.cos(w_const * player_full_set['prev_kickoff_weekday'].astype(float))
+    player_full_set['prev_kickoff_weekday_sin'] =\
+        np.sin(w_const * player_full_set['prev_kickoff_weekday'].astype(float))
+    return player_full_set
+
+
+def add_rolling_stats(data, data_teams, prev_matches_consider=3):
+    player_full_set = data.copy()
+    # =team_fixtures_results
+    # Full team stats per gameweek including previous averages
+    roll_cols = ['roll_team_scored',
+                 'roll_team_conceded',
+                 'roll_team_points',
+                 'roll_unique_scorers',
+                 'roll_mean_points',
+                 'roll_total_points']
+
+    add_team_cols = ['points',
+                     'team_mean_points',
+                     'team_total_points',
+                     'unique_scorers',
+                     ]
+    team_stats_add = data_teams[
+        ['team_id', 'gameweek'] + add_team_cols + roll_cols].copy()
+    team_stats_add[add_team_cols + roll_cols] = \
+        team_stats_add.groupby(['team_id'])[add_team_cols + roll_cols].shift(1)
+    rn_dict = {'points': 'team_prev_result_points',
+               'team_mean_points': 'team_prev_mean_points',
+               'team_total_points': 'team_prev_total_points',
+               'unique_scorers': 'team_prev_unique_scorers'}
+    team_stats_add.rename(columns=rn_dict,
+                          inplace=True)
+    team_stats_add['gameweek'] = team_stats_add['gameweek'].astype(int)
+    player_full_set['gameweek'] = player_full_set['gameweek'].astype(int)
+    team_stats_add['team_id'] = team_stats_add['team_id'].astype(int)
+    player_full_set['team_id'] = player_full_set['team_id'].astype(int)
+
+    # Add previous and rolling team stats
+    player_full_set = player_full_set.merge(team_stats_add.groupby(['team_id',
+                                                                    'gameweek']
+                                                                   ).head(1),
+                                            how='left',
+                                            on=['team_id', 'gameweek'])
+    player_full_set['gameweek'] = player_full_set['gameweek'].astype(str)
+    player_full_set['team_id'] = player_full_set['team_id'].astype(str)
+
+    # Add change in value
+    player_full_set['value_change'] =\
+        player_full_set.groupby('player_id')['value'].diff(1)
+
+    # New variables created by average of previous ones. Create a 'form'
+    # variable from previous bps. Also see how much they previously played and
+    # scored.
+    new_cols = ['custom_form', 'roll_minutes', 'roll_goals_scored']
+    player_full_set[new_cols] = player_full_set.groupby('player_id')[
+        'prev_bps',
+        'prev_minutes',
+        'prev_goals_scored']\
+        .apply(lambda x: x.rolling(center=False, window=prev_matches_consider)
+               .mean())
+    return player_full_set
+
+
+# =========================================================================== #
+# =========================================================================== #
+# =========================================================================== #
+
+data_main = raw_data_load('data',
+                          'data_main',
+                          's201819',
+                          37)
+
+data_players = raw_data_load('data',
+                             'data_players_deep',
+                             's201819',
+                             37)
+
+data_fixtures = raw_data_load('data',
+                              'data_fixtures',
+                              's201819',
+                              37)
+
+# data_main = raw_data_load('data',
+#                           'data_main')
+#
+# data_players = raw_data_load('data',
+#                               'data_players_deep')
+#
+# data_fixtures = raw_data_load('data',
+#                               'data_fixtures')
+
+
+events = get_events(data_main['events'])
+next_gameweek = get_next_gameweek(data_main['events'])
+current_gameweek = get_current_gameweek(data_main['events'])
+previous_gameweek = get_previous_gameweek(data_main['events'])
+total_players = data_main['total-players']
+
+next_fixtures = get_gameweek_fixtures(data_fixtures, next_gameweek)
+all_fixtures = get_fixtures(data_fixtures)
 positions = get_positions(data_main)
 player_summary = get_players(data_main['elements'])
 teams = get_teams(data_main['teams'])
 player_history, player_future = get_players_deep(data_players)
-total_players = data_main['total-players']
+
+
+# OLD MAIN PART STARTED HERE ==================================================
+player_history2 = add_fixture_team(player_history, all_fixtures)
+team_fixtures_results = team_detailed_data(all_fixtures, player_history2,
+                                           prev_matches_consider=3)
+player_next_row = next_gameweek_rows(team_fixtures_results)
+player_history3 = add_predict_player_row(player_history2, player_next_row,
+                                         total_players)  # TODO: this!
+player_history4 = add_lagged_columns(player_history3)
+player_history5 = add_team_details(player_history4, team_fixtures_results)
+player_history6 = add_player_reference_data(player_history5, player_summary,
+                                            positions)
+player_history7 = add_team_reference_data(player_history6, teams)
+player_history8 = add_time_features(player_history7)
+player_history9 = add_rolling_stats(player_history8, team_fixtures_results,
+                                    prev_matches_consider=3)
+
+# Not totally necessary, but I like the columns ordered so it's easier to
+# inspect the data
+all_cols = list(player_history9.columns)
+
+# Important columns will go first in this order
+imp_col_order = [
+    'player_id',
+    'first_name',
+    'second_name',
+    'position',
+    'team_id',
+    'team_short',
+    'team_name',
+    'team_difficulty',
+    'gameweek',
+    'kickoff_time',
+    'kickoff_hour',
+    'kickoff_hour_cos',
+    'kickoff_hour_sin',
+    'kickoff_hour_bin',
+    'kickoff_weekday',
+    'kickoff_weekday_cos',
+    'kickoff_weekday_sin',
+    'event_day',
+    'fixture_id',
+    'is_home',
+    'opponent_team',
+    'opponent_team_short',
+    'opponent_team_name',
+    'opponent_team_strength',
+    'opponent_difficulty',
+    'opponent_strength_ha_overall',
+    'opponent_strength_ha_attack',
+    'opponent_strength_ha_defence',
+    'target_total_points',
+    'target_minutes',
+    'target_goals_scored',
+    'target_goals_conceded',
+    'selected',
+    'value',
+    'value_change',
+    'custom_form',
+    'transfers_balance',
+    'transfers_in',
+    'transfers_out',
+    'team_strength',
+    'team_strength_ha_overall',
+    'team_strength_ha_attack',
+    'team_strength_ha_defence',
+]
+
+# Add important columns and then those left over
+new_col_order = imp_col_order + [col for col in all_cols if
+                                 col not in imp_col_order]
+
+# Those columns which should be treated as numeric
+cols_to_numeric = ['target_total_points',
+                   'target_minutes',
+                   'target_goals_scored',
+                   'selected',
+                   'value',
+                   'value_change',
+                   'custom_form',
+                   'transfers_balance',
+                   'transfers_in',
+                   'transfers_out',
+                   'chance_of_playing_this_round',
+                   'chance_of_playing_next_round',
+                   'prev_total_points',
+                   'prev_minutes',
+                   'prev_goals_scored',
+                   'prev_bonus',
+                   'prev_creativity',
+                   'prev_ict_index',
+                   'prev_influence',
+                   'prev_threat',
+                   'team_prev_result_points',
+                   'team_prev_mean_points',
+                   'team_prev_total_points',
+                   'team_prev_unique_scorers',
+                   'roll_team_scored',
+                   'roll_team_conceded',
+                   'roll_team_points',
+                   'roll_unique_scorers',
+                   'roll_mean_points',
+                   'roll_total_points',
+                   'roll_minutes',
+                   'roll_goals_scored',
+                   'kickoff_hour_cos',
+                   'kickoff_hour_sin',
+                   'kickoff_weekday_cos',
+                   'kickoff_weekday_sin',
+                   'prev_kickoff_hour_cos',
+                   'prev_kickoff_hour_sin',
+                   'prev_kickoff_weekday_cos',
+                   'prev_kickoff_weekday_sin',
+                   ]
+player_history9[cols_to_numeric] = player_history9[cols_to_numeric].astype(
+    float)
+
+# Those columns which should be treated as categorical
+cols_to_categorical = ['player_id',
+                       # 'position',
+                       'team_id',
+                       'team_short',
+                       'team_name',
+                       'kickoff_hour',
+                       'kickoff_hour_bin',
+                       'kickoff_weekday',
+                       'event_day',
+                       'fixture_id',
+                       'opponent_team',
+                       'opponent_team_short',
+                       'opponent_team_name',
+                       'status',
+                       'prev_opponent_team',
+                       'prev_playergw_id',
+                       'prev_kickoff_hour',
+                       'prev_kickoff_hour_bin',
+                       'prev_kickoff_weekday',
+                       ]
+player_history9[cols_to_categorical] = player_history9[
+    cols_to_categorical].astype('category')
+
+# Final output is our player dataset with the columns ordered. Also take
+# into account the requested start gameweek here (as rolling values may
+# require earlier gameweeks when created in the code above)
+player_history10 = player_history9.loc[
+    (player_history9['gameweek'] >= gameweek_start)
+    & (player_history9['gameweek'] <= gameweek_end + 1),
+    new_col_order]
+
 
 # Key ID variables:
 #   - gameweek (cat)
 #   - code (int) => fixture_id_long (cat)
 #   - [fixture] id (int) => fixture_id (cat)
 #   - team (int) => team_id (cat) [same with team_a and team_h]
-#
+
+
+
+
+
+
+
+
+
 
 
 # TODO: This class is a bit of a so-called 'God' object so refactor this when
@@ -377,6 +1085,11 @@ class PlayerDataFrame():
 
     def transform(self, data):
         pass
+
+    def _add_fixture_team(self):
+        pass
+
+
 
 
 
