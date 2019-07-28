@@ -55,6 +55,8 @@ API_URLS_FULL = {
 
 LOGIN_URL = "https://users.premierleague.com/accounts/login/"
 
+
+# TODO: should return string not int - update elsewhere to make correct use of
 def get_datetime_string():
     return round(datetime.now().timestamp())
 

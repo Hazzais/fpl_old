@@ -1,11 +1,20 @@
+"""
+TODO: Full docstrings
+TODO: Improve comments
+TODO: investigate OOP rather than functional approach
+Key ID variables:
+  - gameweek (cat)
+  - code (int) => fixture_id_long (cat)
+  - [fixture] id (int) => fixture_id (cat)
+  - team (int) => team_id (cat) [same with team_a and team_h]
+"""
+
 import os
 import pickle
 import pandas as pd
 import numpy as np
 from copy import deepcopy
 import re
-from fpltools.utils import get_current_gameweek, get_next_gameweek,\
-    get_previous_gameweek
 
 
 def get_latest(in_dir, file_or_folder, regex_pattern=r'.*'):
@@ -481,9 +490,11 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
     return team_fixtures_results
 
 
-def add_remaining_gameweeks(data, data_summary, data_fixtures):
+def add_remaining_gameweeks(data, data_summary, data_future, data_fixtures,
+                            total_players):
     players = data.copy()
     players_summary = data_summary.copy()
+    players_future = data_future.copy()
     fixtures = data_fixtures.copy()
 
     # Columns from future player fixtures to add
@@ -500,7 +511,7 @@ def add_remaining_gameweeks(data, data_summary, data_fixtures):
     # which will not be in the future gameweeks which can be determined from
     # other columns. For example, determine the players teams and opponents
     # from the row matches' home and away teams and the home/away flag.
-    players = pd.concat((players, player_future[keep_cols]), sort=False)
+    players = pd.concat((players, players_future[keep_cols]), sort=False)
     players.loc[(players.team_id.isna()) & (players.is_home), 'team_id'] =\
         players.loc[(players.team_id.isna()) & (players.is_home), 'team_h']
     players.loc[(players.team_id.isna()) &
@@ -694,7 +705,7 @@ def add_team_details(data, team_fixtures_results):
 def add_player_reference_data(data, player_summary, positions):
     player_full_set = data.copy()
     positions_copy = positions[['position_id', 'singular_name_short']].copy()
-    positions_copy.rename(columns={'singular_name_short': ' position'},
+    positions_copy.rename(columns={'singular_name_short': 'position'},
                           inplace=True)
     # Add player summary columns, including reference info like names as well
     # as position. This is constant data throughout the season
@@ -898,214 +909,6 @@ def add_rolling_stats(data, data_teams, prev_matches_consider=3):
     return player_full_set
 
 
-# =========================================================================== #
-# =========================================================================== #
-# =========================================================================== #
-
-data_main = raw_data_load('data',
-                          'data_main',
-                          's201819',
-                          37)
-
-data_players = raw_data_load('data',
-                             'data_players_deep',
-                             's201819',
-                             37)
-
-data_fixtures = raw_data_load('data',
-                              'data_fixtures',
-                              's201819',
-                              37)
-
-# data_main = raw_data_load('data',
-#                           'data_main')
-#
-# data_players = raw_data_load('data',
-#                               'data_players_deep')
-#
-# data_fixtures = raw_data_load('data',
-#                               'data_fixtures')
-
-
-events = get_events(data_main['events'])
-next_gameweek = get_next_gameweek(data_main['events'])
-current_gameweek = get_current_gameweek(data_main['events'])
-previous_gameweek = get_previous_gameweek(data_main['events'])
-total_players = data_main['total-players']
-
-next_fixtures = get_gameweek_fixtures(data_fixtures, next_gameweek)
-all_fixtures = get_fixtures(data_fixtures)
-positions = get_positions(data_main)
-player_summary = get_players(data_main['elements'])
-teams = get_teams(data_main['teams'])
-player_history, player_future = get_players_deep(data_players)
-
-
-# OLD MAIN PART STARTED HERE ==================================================
-player_history2 = add_fixture_team(player_history, all_fixtures)
-team_fixtures_results = team_detailed_data(all_fixtures, player_history2,
-                                           prev_matches_consider=3)
-player_history3 = add_remaining_gameweeks(player_history2, player_summary,
-                                           all_fixtures)
-
-player_history4 = add_lagged_columns(player_history3)
-player_history5 = add_team_details(player_history4, team_fixtures_results)
-player_history6 = add_player_reference_data(player_history5, player_summary,
-                                            positions)
-player_history7 = add_team_reference_data(player_history6, teams)
-player_history8 = add_time_features(player_history7)
-player_history9 = add_rolling_stats(player_history8, team_fixtures_results,
-                                    prev_matches_consider=3)
-
-# Not totally necessary, but I like the columns ordered so it's easier to
-# inspect the data
-all_cols = list(player_history9.columns)
-
-# Important columns will go first in this order
-imp_col_order = [
-    'player_id',
-    'first_name',
-    'second_name',
-    'position',
-    'team_id',
-    'team_short',
-    'team_name',
-    'team_difficulty',
-    'gameweek',
-    'kickoff_time',
-    'kickoff_hour',
-    'kickoff_hour_cos',
-    'kickoff_hour_sin',
-    'kickoff_hour_bin',
-    'kickoff_weekday',
-    'kickoff_weekday_cos',
-    'kickoff_weekday_sin',
-    'event_day',
-    'fixture_id',
-    'is_home',
-    'opponent_team',
-    'opponent_team_short',
-    'opponent_team_name',
-    'opponent_team_strength',
-    'opponent_difficulty',
-    'opponent_strength_ha_overall',
-    'opponent_strength_ha_attack',
-    'opponent_strength_ha_defence',
-    'target_total_points',
-    'target_minutes',
-    'target_goals_scored',
-    'target_goals_conceded',
-    'selected',
-    'value',
-    'value_change',
-    'custom_form',
-    'transfers_balance',
-    'transfers_in',
-    'transfers_out',
-    'team_strength',
-    'team_strength_ha_overall',
-    'team_strength_ha_attack',
-    'team_strength_ha_defence',
-]
-
-# Add important columns and then those left over
-new_col_order = imp_col_order + [col for col in all_cols if
-                                 col not in imp_col_order]
-
-# Those columns which should be treated as numeric
-cols_to_numeric = ['target_total_points',
-                   'target_minutes',
-                   'target_goals_scored',
-                   'selected',
-                   'value',
-                   'value_change',
-                   'custom_form',
-                   'transfers_balance',
-                   'transfers_in',
-                   'transfers_out',
-                   'chance_of_playing_this_round',
-                   'chance_of_playing_next_round',
-                   'prev_total_points',
-                   'prev_minutes',
-                   'prev_goals_scored',
-                   'prev_bonus',
-                   'prev_creativity',
-                   'prev_ict_index',
-                   'prev_influence',
-                   'prev_threat',
-                   'team_prev_result_points',
-                   'team_prev_mean_points',
-                   'team_prev_total_points',
-                   'team_prev_unique_scorers',
-                   'roll_team_scored',
-                   'roll_team_conceded',
-                   'roll_team_points',
-                   'roll_unique_scorers',
-                   'roll_mean_points',
-                   'roll_total_points',
-                   'roll_minutes',
-                   'roll_goals_scored',
-                   'kickoff_hour_cos',
-                   'kickoff_hour_sin',
-                   'kickoff_weekday_cos',
-                   'kickoff_weekday_sin',
-                   'prev_kickoff_hour_cos',
-                   'prev_kickoff_hour_sin',
-                   'prev_kickoff_weekday_cos',
-                   'prev_kickoff_weekday_sin',
-                   ]
-player_history9[cols_to_numeric] = player_history9[cols_to_numeric].astype(
-    float)
-
-# Those columns which should be treated as categorical
-cols_to_categorical = ['player_id',
-                       # 'position',
-                       'team_id',
-                       'team_short',
-                       'team_name',
-                       'kickoff_hour',
-                       'kickoff_hour_bin',
-                       'kickoff_weekday',
-                       'event_day',
-                       'fixture_id',
-                       'opponent_team',
-                       'opponent_team_short',
-                       'opponent_team_name',
-                       'status',
-                       'prev_opponent_team',
-                       'prev_playergw_id',
-                       'prev_kickoff_hour',
-                       'prev_kickoff_hour_bin',
-                       'prev_kickoff_weekday',
-                       ]
-player_history9[cols_to_categorical] = player_history9[
-    cols_to_categorical].astype('category')
-
-# Final output is our player dataset with the columns ordered. Also take
-# into account the requested start gameweek here (as rolling values may
-# require earlier gameweeks when created in the code above)
-player_history10 = player_history9.loc[
-    (player_history9['gameweek'] >= gameweek_start)
-    & (player_history9['gameweek'] <= gameweek_end + 1),
-    new_col_order]
-
-
-# Key ID variables:
-#   - gameweek (cat)
-#   - code (int) => fixture_id_long (cat)
-#   - [fixture] id (int) => fixture_id (cat)
-#   - team (int) => team_id (cat) [same with team_a and team_h]
-
-
-
-
-
-
-
-
-
-
-
 # TODO: This class is a bit of a so-called 'God' object so refactor this when
 #       ready. May affect implementation (calls) of the class in other code
 #       so bear this in mind.
@@ -1129,8 +932,3 @@ class PlayerDataFrame():
 
     def _add_fixture_team(self):
         pass
-
-
-
-
-
