@@ -8,9 +8,9 @@ from fpltools.utils import get_current_gameweek, get_next_gameweek,\
     get_previous_gameweek, get_datetime_string
 
 GW_START = 1
-GW_NOW = 37  # 'latest' when live
+GW_NOW = 'latest'  # 'latest' when live
 GW_END = None  # keep as None unless a max gameweek in the output is needed
-SEASON_ID = 's201819'  # switch to 'latest' when live
+SEASON_ID = 'latest'  # switch to 'latest' when live
 
 if __name__ == "__main__":
 
@@ -49,10 +49,14 @@ if __name__ == "__main__":
     # constants above.
     next_gameweek = get_next_gameweek(data_main['events'])
     current_gameweek = get_current_gameweek(data_main['events'])
-    previous_gameweek = get_previous_gameweek(data_main['events'])
 
     # Current human players signed up to Fantasy Premier League
-    total_players = data_main['total-players']
+    try:
+        total_players = data_main['total-players']
+    except KeyError:
+        total_players = data_main['total_players']
+    except KeyError as e:
+        raise KeyError(e)
 
     # Fixture-level data. Different input data necessitates different functions
     next_fixtures = tr.get_gameweek_fixtures(data_fixtures, next_gameweek)
@@ -161,6 +165,7 @@ if __name__ == "__main__":
         'team_strength_ha_attack',
         'team_strength_ha_defence',
     ]
+    imp_col_order = [col for col in imp_col_order if col in all_cols]
 
     # Add important columns and then those left over
     new_col_order = imp_col_order + [col for col in all_cols if
@@ -208,6 +213,8 @@ if __name__ == "__main__":
                        'prev_kickoff_weekday_cos',
                        'prev_kickoff_weekday_sin',
                        ]
+    cols_to_numeric = [col for col in cols_to_numeric if col in all_cols]
+
     player_output[cols_to_numeric] = player_output[cols_to_numeric].astype(
         float)
 
@@ -233,6 +240,9 @@ if __name__ == "__main__":
                            'prev_kickoff_hour_bin',
                            'prev_kickoff_weekday',
                            ]
+    cols_to_categorical = [col for col in cols_to_categorical if col
+                           in all_cols]
+
     player_output[cols_to_categorical] = player_output[
         cols_to_categorical].astype(str)
 
@@ -247,6 +257,7 @@ if __name__ == "__main__":
     out_path = os.path.join('data', SEASON_ID, 'cleaned')
     out_file = 'player_gameweek_data_GW' +\
                str(GW_NOW) +\
+               '_' +\
                str(get_datetime_string()) +\
                '.csv'
     player_output.to_csv(os.path.join(out_path, out_file), index=False)
