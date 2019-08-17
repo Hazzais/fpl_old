@@ -848,8 +848,10 @@ def add_time_features(data):
             r = 'midday'
         elif h < 19:
             r = 'afternoon'
-        else:
+        elif h <=24:
             r = 'evening'
+        else:
+            r = np.nan
         return r
 
     # Determine the hour, bin, and weekday of this and the previous game
