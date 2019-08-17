@@ -271,7 +271,7 @@ def get_players_deep(data):
             'bonus',
             'opponent_team',
             ]
-
+    data = data_players.copy()
     # Need to use same data to get two outputs, a past and future dataset
     player_history = pd.DataFrame(columns=cols)
     player_future = pd.DataFrame()
@@ -286,16 +286,12 @@ def get_players_deep(data):
 
     player_history.rename(columns={'element': 'player_id',
                                    'round': 'gameweek',
-                                   'fixture': 'fixture_id',
-                                   'id': 'playergw_id'},
+                                   'fixture': 'fixture_id'},
                           inplace=True)
     player_future.rename(columns={'id': 'fixture_id',
                                   'code': 'fixture_id_long',
                                   'event': 'gameweek'},
                          inplace=True)
-
-    player_history['playergw_id'] = player_history['playergw_id'].astype(int)
-    player_history['playergw_id'] = player_history['playergw_id'].astype(str)
 
     player_future['team_h'] = player_future['team_h'].astype(str)
     player_future['team_a'] = player_future['team_a'].astype(str)
@@ -306,8 +302,7 @@ def get_players_deep(data):
     player_future['fixture_id'] = player_future['fixture_id'].astype(str)
 
     player_history = cols_to_front(player_history,
-                                   ['player_id', 'gameweek', 'playergw_id',
-                                    'fixture_id'])
+                                   ['player_id', 'gameweek', 'fixture_id'])
     player_future = cols_to_front(player_future,
                                   ['player_id', 'gameweek', 'fixture_id_long',
                                    'fixture_id'])
@@ -621,7 +616,6 @@ def add_lagged_columns(data):
                 'fouls',
                 'goals_conceded',
                 'ict_index',
-                'playergw_id',
                 'influence',
                 'key_passes',
                 'kickoff_time',
