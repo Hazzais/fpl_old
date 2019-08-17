@@ -166,14 +166,17 @@ def cols_to_front(data, cols):
     return data[cols + extra_columns]
 
 
+def datetime_days_diff(start, end):
+    return (end.dt.date - start.dt.date).dt.days + 1
+
+
 def get_gameweek_fixtures(data, gameweek: int):
     outlist = [x for x in data if x['event'] == gameweek]
     outdf = pd.DataFrame(outlist)
     outdf['kickoff_datetime'] = pd.to_datetime(outdf['kickoff_time'],
                                                errors='coerce')
     outdf['min_date'] = outdf['kickoff_datetime'].min()
-    outdf['event_day'] = (outdf['kickoff_datetime'].dt.date
-                          - outdf['min_date'].dt.date).dt.days + 1
+    outdf['event_day'] = datetime_days_diff(outdf['min_date'], outdf['kickoff_datetime'])
     outdf['fixture_id_long'] = outdf['code'].astype(str)
     outdf['fixture_id'] = outdf['id'].astype(str)
     outdf['team_h'] = outdf['team_h'].astype(str)
@@ -382,7 +385,7 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
     #     & (fixtures['gameweek'] <= gameweek_end + 1)]
     if gameweek_upper is not None:
         use_fixtures = fixtures.loc[(fixtures['gameweek'] <=
-                                     gameweek_upper + 1)]
+                                     gameweek_upper + 1)].copy()
     else:
         use_fixtures = fixtures.copy()
 
@@ -391,10 +394,8 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
     min_gw_dates = use_fixtures.groupby('gameweek')['game_datetime'].min()\
         .reset_index().rename(columns={'game_datetime': 'first_ko'})
     use_fixtures = use_fixtures.merge(min_gw_dates, on='gameweek', how='left')
-    use_fixtures['day_game'] = use_fixtures['game_datetime'].dt.day
-    use_fixtures['day_min'] = use_fixtures['first_ko'].dt.day
-    use_fixtures['event_day'] =\
-        use_fixtures['day_game'] - use_fixtures['day_min']
+    use_fixtures['event_day'] = datetime_days_diff(
+        use_fixtures['first_ko'], use_fixtures['game_datetime'])
     use_fixtures.drop(columns=['day_game', 'day_min', 'first_ko'],
                       inplace=True)
 
