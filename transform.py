@@ -49,10 +49,14 @@ if __name__ == "__main__":
     # constants above.
     next_gameweek = get_next_gameweek(data_main['events'])
     current_gameweek = get_current_gameweek(data_main['events'])
-    previous_gameweek = get_previous_gameweek(data_main['events'])
 
     # Current human players signed up to Fantasy Premier League
-    total_players = data_main['total-players']
+    try:
+        total_players = data_main['total-players']
+    except KeyError:
+        total_players = data_main['total_players']
+    except KeyError as e:
+        raise KeyError(e)
 
     # Fixture-level data. Different input data necessitates different functions
     next_fixtures = tr.get_gameweek_fixtures(data_fixtures, next_gameweek)
