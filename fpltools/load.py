@@ -396,8 +396,7 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
     use_fixtures = use_fixtures.merge(min_gw_dates, on='gameweek', how='left')
     use_fixtures['event_day'] = datetime_days_diff(
         use_fixtures['first_ko'], use_fixtures['game_datetime'])
-    use_fixtures.drop(columns=['day_game', 'day_min', 'first_ko'],
-                      inplace=True)
+    use_fixtures.drop(columns=['first_ko'], inplace=True)
 
     # Need to concatenate home and away data to get both teams
     team_fixtures_results_home = use_fixtures[fixt_cols].rename(
@@ -561,8 +560,15 @@ def add_remaining_gameweeks(data, data_summary, data_future, data_fixtures,
     # A row for the next game (max one per gameweek per player) per player and
     # add a flag to indicate this for later combination with main dataset.
     next_game_per_player = players.loc[~players.started,
-                    ['player_id', 'gameweek', 'fixture_id_long']]\
-        .groupby(['player_id', 'gameweek', 'fixture_id_long']).head(1)
+                    ['player_id', 'gameweek', 'fixture_id_long', 'dtime']]\
+        .groupby(['player_id', 'gameweek', 'fixture_id_long', 'dtime']).head(1)
+    next_game_per_player.sort_values(['player_id',
+                                      'gameweek',
+                                      'dtime',
+                                      'fixture_id_long'], inplace=True)
+    next_game_per_player.drop_duplicates(subset=['player_id'],
+                                         keep='first',
+                                         inplace=True)
     next_game_per_player['next_game'] = True
 
     # Add to the next game rows the estimated percentage ownership, absolute
@@ -606,7 +612,7 @@ def add_remaining_gameweeks(data, data_summary, data_future, data_fixtures,
     players['transfers_out'] =\
         players.transfers_out_x.combine_first(players.transfers_out_y)
     drop_cols = [col for col in players.columns if col.endswith(('_x', '_y'))]
-    players.drop(columns=drop_cols + ['dtime', 'is_home'], inplace=True)
+    players.drop(columns=drop_cols + ['is_home'], inplace=True)
     return players
 
 
