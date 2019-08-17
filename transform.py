@@ -8,9 +8,9 @@ from fpltools.utils import get_current_gameweek, get_next_gameweek,\
     get_previous_gameweek, get_datetime_string
 
 GW_START = 1
-GW_NOW = 37  # 'latest' when live
+GW_NOW = 'latest'  # 'latest' when live
 GW_END = None  # keep as None unless a max gameweek in the output is needed
-SEASON_ID = 's201819'  # switch to 'latest' when live
+SEASON_ID = 'latest'  # switch to 'latest' when live
 
 if __name__ == "__main__":
 
