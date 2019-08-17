@@ -9,27 +9,28 @@ import pandas as pd
 # https://github.com/janerikcarlsen/fpl-cli/blob/master/fplcli/urls.py and
 # https://www.reddit.com/r/FantasyPL/comments/9mnq4f/accessing_api_with
 # authentication/
+# TODO: Check these
 API_URLS_BASE = 'https://fantasy.premierleague.com/api/'
 API_URLS_FULL = {
-    'event': '{}fixtures/?event={{}}'.format(API_URLS_BASE),
-    'me': '{}me'.format(API_URLS_BASE),
-    'entry': '{}entry/{{}}'.format(API_URLS_BASE),  # playerid? (e.g. 956841)
-    'X_history': '{}entry/{{}}/history'.format(API_URLS_BASE),
-    'gameweeks': '{}events'.format(API_URLS_BASE),
-    'gameweek_fixtures': '{}fixtures/?event={{}}'.format(API_URLS_BASE),
-    'gameweek_current': '{}event/{{}}/live'.format(API_URLS_BASE),
-    'dynamic': '{}bootstrap-dynamic'.format(API_URLS_BASE),
-    'live': '{}live'.format(API_URLS_BASE),  # event/{{gw}}/live
-    'history': '{}history'.format(API_URLS_BASE),  # event/{{gw}}/history
-    'fixtures': '{}fixtures'.format(API_URLS_BASE),
-    'player': '{}element-summary/{{}}'.format(API_URLS_BASE),
+    'event': '{}fixtures/?event={{}}/'.format(API_URLS_BASE),
+    'me': '{}me/'.format(API_URLS_BASE),
+    'entry': '{}entry/{{}}/'.format(API_URLS_BASE),  # playerid? (e.g. 956841)
+    'X_history': '{}entry/{{}}/history/'.format(API_URLS_BASE),
+    'gameweeks': '{}events/'.format(API_URLS_BASE),
+    'gameweek_fixtures': '{}fixtures/?event={{}}/'.format(API_URLS_BASE),
+    'gameweek_current': '{}event/{{}}/live/'.format(API_URLS_BASE),
+    'dynamic': '{}bootstrap-dynamic/'.format(API_URLS_BASE),
+    'live': '{}live/'.format(API_URLS_BASE),  # event/{{gw}}/live
+    'history': '{}history/'.format(API_URLS_BASE),  # event/{{gw}}/history
+    'fixtures': '{}fixtures/'.format(API_URLS_BASE),
+    'player': '{}element-summary/{{}}/'.format(API_URLS_BASE),
     'static': '{}bootstrap-static/'.format(API_URLS_BASE),
-    'user_history': '{}entry/{{}}/history'.format(API_URLS_BASE),
-    'user_picks': '{}entry/{{}}/event/{{}}/picks'.format(API_URLS_BASE),
-    'user_team': '{}my-team/{{}}'.format(API_URLS_BASE),
-    'user_transfers': '{}entry/{{}}/transfers'.format(API_URLS_BASE),
-    'transfers': '{}transfers'.format(API_URLS_BASE),
-    'teams': '{}teams'.format(API_URLS_BASE),
+    'user_history': '{}entry/{{}}/history/'.format(API_URLS_BASE),
+    'user_picks': '{}entry/{{}}/event/{{}}/picks/'.format(API_URLS_BASE),
+    'user_team': '{}my-team/{{}}/'.format(API_URLS_BASE),
+    'user_transfers': '{}entry/{{}}/transfers/'.format(API_URLS_BASE),
+    'transfers': '{}transfers/'.format(API_URLS_BASE),
+    'teams': '{}teams/'.format(API_URLS_BASE),
 
     # 'picks': '{}picks'.format(API_URLS_BASE),
     # 'leagues_entered': '{}leagues-entered'.format(API_URLS_BASE),
@@ -98,7 +99,7 @@ class SaveData:
 
     def __init__(self, data, seasonid=None, save_base='data'):
         self.timestamp = get_datetime_string()
-        self.gameweek = get_next_gameweek(data)
+        self.gameweek = get_next_gameweek(data['events'])
         self.seasonid = seasonid
         self.save_base = save_base
         self.save_dir = os.path.join(self.save_base, self.seasonid,
