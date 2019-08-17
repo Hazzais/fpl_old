@@ -11,10 +11,10 @@ import pandas as pd
 # authentication/
 API_URLS_BASE = 'https://fantasy.premierleague.com/api/'
 API_URLS_FULL = {
-    'event': 'fixtures/?event={{}}'.format(API_URLS_BASE),
-    'me': 'me'.format(API_URLS_BASE),
-    'entry': 'entry/{{}}'.format(API_URLS_BASE),  # playerid? (e.g. 956841)
-    'X_history': 'entry/{{}}/history'.format(API_URLS_BASE),
+    'event': '{}fixtures/?event={{}}'.format(API_URLS_BASE),
+    'me': '{}me'.format(API_URLS_BASE),
+    'entry': '{}entry/{{}}'.format(API_URLS_BASE),  # playerid? (e.g. 956841)
+    'X_history': '{}entry/{{}}/history'.format(API_URLS_BASE),
     'gameweeks': '{}events'.format(API_URLS_BASE),
     'gameweek_fixtures': '{}fixtures/?event={{}}'.format(API_URLS_BASE),
     'gameweek_current': '{}event/{{}}/live'.format(API_URLS_BASE),
