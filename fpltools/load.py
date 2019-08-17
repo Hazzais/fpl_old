@@ -271,7 +271,7 @@ def get_players_deep(data):
             'bonus',
             'opponent_team',
             ]
-    data = data_players.copy()
+
     # Need to use same data to get two outputs, a past and future dataset
     player_history = pd.DataFrame(columns=cols)
     player_future = pd.DataFrame()
@@ -299,13 +299,11 @@ def get_players_deep(data):
     player_history['fixture_id'] = player_history['fixture_id'].astype(str)
     player_future['fixture_id_long'] = player_future['fixture_id_long']\
         .astype(str)
-    player_future['fixture_id'] = player_future['fixture_id'].astype(str)
 
     player_history = cols_to_front(player_history,
                                    ['player_id', 'gameweek', 'fixture_id'])
     player_future = cols_to_front(player_future,
-                                  ['player_id', 'gameweek', 'fixture_id_long',
-                                   'fixture_id'])
+                                  ['player_id', 'gameweek', 'fixture_id_long'])
 
     return player_history, player_future
 
@@ -375,7 +373,8 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
                  'team_a_difficulty',
                  'team_a_score',
                  'kickoff_time',
-                 'event_day']
+                 'event_day',
+                 'game_datetime']
 
     # Subset to gameweeks to use
     # use_fixtures = fixtures.loc[
@@ -386,6 +385,18 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
                                      gameweek_upper + 1)]
     else:
         use_fixtures = fixtures.copy()
+
+    use_fixtures['game_datetime'] = pd.to_datetime(
+        use_fixtures['kickoff_time'])
+    min_gw_dates = use_fixtures.groupby('gameweek')['game_datetime'].min()\
+        .reset_index().rename(columns={'game_datetime': 'first_ko'})
+    use_fixtures = use_fixtures.merge(min_gw_dates, on='gameweek', how='left')
+    use_fixtures['day_game'] = use_fixtures['game_datetime'].dt.day
+    use_fixtures['day_min'] = use_fixtures['first_ko'].dt.day
+    use_fixtures['event_day'] =\
+        use_fixtures['day_game'] - use_fixtures['day_min']
+    use_fixtures.drop(columns=['day_game', 'day_min', 'first_ko'],
+                      inplace=True)
 
     # Need to concatenate home and away data to get both teams
     team_fixtures_results_home = use_fixtures[fixt_cols].rename(
@@ -407,8 +418,10 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
 
     team_fixtures_results = pd.concat(
         [team_fixtures_results_home, team_fixtures_results_away], sort=False)
-    team_fixtures_results.sort_values(['team_id', 'gameweek', 'kickoff_time'],
+    team_fixtures_results.gameweek = team_fixtures_results.gameweek.astype(int)
+    team_fixtures_results.sort_values(['team_id', 'gameweek', 'game_datetime'],
                                       inplace=True)
+    team_fixtures_results.gameweek = team_fixtures_results.gameweek.astype(str)
 
     # originally single row was here ####
 
