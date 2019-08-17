@@ -165,6 +165,7 @@ if __name__ == "__main__":
         'team_strength_ha_attack',
         'team_strength_ha_defence',
     ]
+    imp_col_order = [col for col in imp_col_order if col in all_cols]
 
     # Add important columns and then those left over
     new_col_order = imp_col_order + [col for col in all_cols if
@@ -212,6 +213,8 @@ if __name__ == "__main__":
                        'prev_kickoff_weekday_cos',
                        'prev_kickoff_weekday_sin',
                        ]
+    cols_to_numeric = [col for col in cols_to_numeric if col in all_cols]
+
     player_output[cols_to_numeric] = player_output[cols_to_numeric].astype(
         float)
 
@@ -237,6 +240,9 @@ if __name__ == "__main__":
                            'prev_kickoff_hour_bin',
                            'prev_kickoff_weekday',
                            ]
+    cols_to_categorical = [col for col in cols_to_categorical if col
+                           in all_cols]
+
     player_output[cols_to_categorical] = player_output[
         cols_to_categorical].astype(str)
 
@@ -251,6 +257,7 @@ if __name__ == "__main__":
     out_path = os.path.join('data', SEASON_ID, 'cleaned')
     out_file = 'player_gameweek_data_GW' +\
                str(GW_NOW) +\
+               '_' +\
                str(get_datetime_string()) +\
                '.csv'
     player_output.to_csv(os.path.join(out_path, out_file), index=False)
