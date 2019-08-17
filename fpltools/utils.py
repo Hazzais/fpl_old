@@ -23,7 +23,7 @@ API_URLS_FULL = {
     'history': '{}history'.format(API_URLS_BASE),  # event/{{gw}}/history
     'fixtures': '{}fixtures'.format(API_URLS_BASE),
     'player': '{}element-summary/{{}}'.format(API_URLS_BASE),
-    'static': '{}bootstrap-static'.format(API_URLS_BASE),
+    'static': '{}bootstrap-static/'.format(API_URLS_BASE),
     'user_history': '{}entry/{{}}/history'.format(API_URLS_BASE),
     'user_picks': '{}entry/{{}}/event/{{}}/picks'.format(API_URLS_BASE),
     'user_team': '{}my-team/{{}}'.format(API_URLS_BASE),
