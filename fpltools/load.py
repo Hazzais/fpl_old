@@ -97,6 +97,10 @@ def get_events(data):
     events = pd.DataFrame(columns=cols_order)
     for pl in data:
         event_id = pl['id']
+        try:
+            del pl['chip_plays']
+        except KeyError:
+            pass
         event_row = pd.DataFrame(pl, index=[event_id])
         events = pd.concat([events, event_row], sort=False)
 
