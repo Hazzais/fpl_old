@@ -611,52 +611,57 @@ def add_remaining_gameweeks(data, data_summary, data_future, data_fixtures,
 
 def add_lagged_columns(data):
     player_full_set = data.copy()
+    extant_cols = player_full_set.columns
     # Columns in which we need to lag the values (i.e. bring to player's next
     # row). I.e. these features for a game should be those from the previous
-    # game
-    lag_cols = ['total_points',
-                'minutes',
-                'goals_scored',
-                'bonus',
-                'opponent_team',
-                'assists',
-                'attempted_passes',
-                'big_chances_created',
-                'big_chances_missed',
-                'bps',
-                'clean_sheets',
-                'clearances_blocks_interceptions',
-                'completed_passes',
-                'creativity',
-                'dribbles',
-                'ea_index',
-                'errors_leading_to_goal',
-                'errors_leading_to_goal_attempt',
-                'fouls',
-                'goals_conceded',
-                'ict_index',
-                'influence',
-                'key_passes',
-                'kickoff_time',
-                'offside',
-                'open_play_crosses',
-                'own_goals',
-                'penalties_conceded',
-                'penalties_missed',
-                'penalties_saved',
-                'recoveries',
-                'red_cards',
-                'saves',
-                'tackled',
-                'tackles',
-                'target_missed',
-                'team_a_score',
-                'team_h_score',
-                'threat',
-                'was_home',
-                'winning_goals',
-                'yellow_cards'
-                ]
+    # game. Note that these are may only appear in one season's data as the
+    # variables available have changed somewhat.
+    lag_cols_all = ['total_points',
+                    'minutes',
+                    'goals_scored',
+                    'bonus',
+                    'opponent_team',
+                    'assists',
+                    'attempted_passes',
+                    'big_chances_created',
+                    'big_chances_missed',
+                    'bps',
+                    'clean_sheets',
+                    'clearances_blocks_interceptions',
+                    'completed_passes',
+                    'creativity',
+                    'dribbles',
+                    'ea_index',
+                    'errors_leading_to_goal',
+                    'errors_leading_to_goal_attempt',
+                    'fouls',
+                    'goals_conceded',
+                    'ict_index',
+                    'influence',
+                    'key_passes',
+                    'kickoff_time',
+                    'offside',
+                    'open_play_crosses',
+                    'own_goals',
+                    'penalties_conceded',
+                    'penalties_missed',
+                    'penalties_saved',
+                    'recoveries',
+                    'red_cards',
+                    'saves',
+                    'tackled',
+                    'tackles',
+                    'target_missed',
+                    'team_a_score',
+                    'team_h_score',
+                    'threat',
+                    'was_home',
+                    'winning_goals',
+                    'yellow_cards',
+                    ]
+
+    # Only lag available columns
+    lag_cols = [col for col in lag_cols_all if col in extant_cols]
 
     # Columns we may potentially predict. Add prefix to mark them.
     target_cols = ['total_points',
@@ -668,7 +673,13 @@ def add_lagged_columns(data):
     # Get rid of columns. All those columns to delete include the original
     # names we are lagging
     del_cols = [col for col in lag_cols if col not in target_cols] +\
-               ['loaned_in', 'loaned_out', 'team_a', 'team_h']
+               ['team_a', 'team_h']
+
+    # These columns only exist in 2018 season data
+    if 'loaned_in' in extant_cols:
+        del_cols += ['loaned_in']
+    if 'loaned_out' in extant_cols:
+        del_cols += ['loaned_out']
 
     # Add prefix to mark lagged columns as values from the previous gameweek
     lagged_cols = ['prev_' + str(col) for col in lag_cols]
