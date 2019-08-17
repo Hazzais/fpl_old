@@ -512,12 +512,18 @@ def add_remaining_gameweeks(data, data_summary, data_future, data_fixtures,
     # Columns from future player fixtures to add
     keep_cols = ['player_id',
                  'gameweek',
+                 'fixture_id_long',
                  'fixture_id',
                  'is_home',
                  'kickoff_time',
-                 'kickoff_time_formatted',
                  'team_a',
                  'team_h']
+
+    players = players.merge(fixtures[['fixture_id', 'fixture_id_long']],
+                            on='fixture_id', how='left')
+    players_future = players_future.merge(fixtures[['fixture_id',
+                                                    'fixture_id_long']],
+                                          on='fixture_id_long', how='left')
 
     # Combine previous gameweeks and unplayed ones. There are some columns
     # which will not be in the future gameweeks which can be determined from
@@ -542,20 +548,20 @@ def add_remaining_gameweeks(data, data_summary, data_future, data_fixtures,
         players.loc[(players.team_id.isna()) & (players.is_home), 'is_home']
 
     # Add a flag to highlight whether a gameweek has started and finished yet
-    players = players.merge(fixtures[['fixture_id', 'started', 'finished']],
-                            on='fixture_id')
+    players = players.merge(fixtures[['fixture_id_long', 'started', 'finished']],
+                            on='fixture_id_long')
 
     # Need to sort to get order of games for each player. Use the kickoff date
     # time as a third sort variable to account for double gameweeks.
     players['dtime'] = pd.to_datetime(players['kickoff_time'], errors='coerce')
-    players.sort_values(['player_id', 'gameweek', 'dtime', 'fixture_id'],
+    players.sort_values(['player_id', 'gameweek', 'dtime', 'fixture_id_long'],
                         inplace=True)
 
     # A row for the next game (max one per gameweek per player) per player and
     # add a flag to indicate this for later combination with main dataset.
     next_game_per_player = players.loc[~players.started,
-                    ['player_id', 'gameweek', 'fixture_id']]\
-        .groupby(['player_id', 'gameweek', 'fixture_id']).head(1)
+                    ['player_id', 'gameweek', 'fixture_id_long']]\
+        .groupby(['player_id', 'gameweek', 'fixture_id_long']).head(1)
     next_game_per_player['next_game'] = True
 
     # Add to the next game rows the estimated percentage ownership, absolute
@@ -588,7 +594,7 @@ def add_remaining_gameweeks(data, data_summary, data_future, data_fixtures,
     # previous gameweeks data, need to take the first non-missing.
     # TODO: make this approach better.
     players = players.merge(next_game_per_player, how='left',
-                             on=['player_id', 'gameweek', 'fixture_id'])
+                             on=['player_id', 'gameweek', 'fixture_id_long'])
     players['next_game'].fillna(False, inplace=True)
     players['selected'] = players.selected_x.combine_first(players.selected_y)
     players['value'] = players.value_x.combine_first(players.value_y)
@@ -632,7 +638,6 @@ def add_lagged_columns(data):
                 'influence',
                 'key_passes',
                 'kickoff_time',
-                'kickoff_time_formatted',
                 'offside',
                 'open_play_crosses',
                 'own_goals',
