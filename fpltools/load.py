@@ -399,21 +399,25 @@ def team_detailed_data(fixtures, player_full_set, prev_matches_consider=3,
     use_fixtures.drop(columns=['first_ko'], inplace=True)
 
     # Need to concatenate home and away data to get both teams
+    # NOTE THAT THERE IS A BUG IN THE RAW DATA WHERE THE HOME AND AWAY
+    # STRENGTHS ARE THE WRONG WAY AROUND IF INTERPRETING AS I AM - HENCE THE
+    # BELOW
     team_fixtures_results_home = use_fixtures[fixt_cols].rename(
         columns={'team_h': 'team_id',
                  'team_a': 'opponent_team',
-                 'team_h_difficulty': 'team_difficulty',
-                 'team_a_difficulty': 'opponent_difficulty',
+                 'team_h_difficulty': 'opponent_difficulty',
+                 'team_a_difficulty': 'team_difficulty',
                  'team_h_score': 'team_scored',
-                 'team_a_score': 'team_conceded'})
+                 'team_a_score': 'team_conceded'}).copy()
     team_fixtures_results_home['is_home'] = True
+
     team_fixtures_results_away = use_fixtures[fixt_cols].rename(
         columns={'team_a': 'team_id',
                  'team_h': 'opponent_team',
-                 'team_a_difficulty': 'team_difficulty',
-                 'team_h_difficulty': 'opponent_difficulty',
+                 'team_a_difficulty': 'opponent_difficulty',
+                 'team_h_difficulty': 'team_difficulty',
                  'team_a_score': 'team_scored',
-                 'team_h_score': 'team_conceded'})
+                 'team_h_score': 'team_conceded'}).copy()
     team_fixtures_results_away['is_home'] = False
 
     team_fixtures_results = pd.concat(
